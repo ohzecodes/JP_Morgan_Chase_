@@ -1,0 +1,144 @@
+From b36eee53ed23513b4b58cec4bd44859fa1544591 Mon Sep 17 00:00:00 2001
+From: M <mzafar02@mylangara.ca>
+Date: Tue, 4 Aug 2020 22:27:29 -0700
+Subject: [PATCH] in
+
+---
+ 1/.DS_Store                   | Bin 6148 -> 0 bytes
+ 1/jpm_module_1/client3.py     |  14 ++++++--------
+ 1/jpm_module_1/client_test.py |   5 ++++-
+ 1/poetry.lock                 |  15 ++++-----------
+ 1/pyproject.toml              |  17 ++++++++---------
+ 5 files changed, 22 insertions(+), 29 deletions(-)
+ delete mode 100644 1/.DS_Store
+
+diff --git a/1/.DS_Store b/1/.DS_Store
+deleted file mode 100644
+index fdbb14be5a358e53548fcd8859cb49213c17fb93..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 6148
+zcmeHK!EVz)5S>i}by6rfAhkzdkT^tD(uhhGLW)8;<c4Gf2SBNvSk%SwrnW<xhM-*d
+z2>1g&g%d|Ugb#o>y9;WZR^m`0RP9K!Z+3Uy+J5%#dWlGM#)BqNjffmLW4Vgr0^@%6
+z6)TyR3Q(vqQW{gAa*9Z<WZMR-fK}jsQ-J60E$UK28RqTz`HPlrEc-z$1LW`m@eqFh
+zr!qv$JEjp0sRx%dz}$~1M6Friefe8nFv&*ddS8Q49A$Z<@m-YG$~SJVJ5JT9-mbp(
+zj^xD4{d}Bt{PZQ)p8EMwVB%*|#(!czcpin5UhVE<ndE+ygsCD&gAggNUPQ@2PC9a&
+z3^Fy2r#l>{;#7LI?b&R%QFnJ+`}4XxYqs|H>h50i!F*nEw(d0_bq|Nrv)TLkhfhih
+z5?BD0-7)wZJ|nnPsCQnP#4>q<9Okb>NFR%5LOT$4x-6sELdJRdH<1_81cLV=e1tf`
+zD{NiJ{aD~`V0;M%zw#*<F=~B!Te#wn0&A1+3Z5eS7;IkZci<BD9WQfBet}y9E2I;A
+zB$0}S=6*9Z!YSni{<i`jRclwPfca#djjJ8jj%F3G3S0vPcztl;jBSGpjcVyYp^gB+
+zGMbek=3fQoxCYw>7aGw66PgOtRAG)7LetUin!L8bg+@&$VGbX{Tv?bCicnX__^wJP
+z(bi~7tAJHtS%EcOt?~Z<<nr_XGRfAg0#<=*rGO|Ocn2LklG$5V9**}~7k&t5<Gh7N
+lML}V<V-@gLybV`|K9>Vv+u%YYT444^K*?YWtH3{1;1}}By}SSb
+
+diff --git a/1/jpm_module_1/client3.py b/1/jpm_module_1/client3.py
+index f1771c3..5978581 100644
+--- a/1/jpm_module_1/client3.py
++++ b/1/jpm_module_1/client3.py
+@@ -30,25 +30,23 @@ QUERY = "http://localhost:8080/query?id={}"
+ N = 500
+
+ def getDataPoint(quote):
+-	""" Produce all of the needed values to generate a datapoint """
+-	""" ------------- Update this function ------------- """
+ 	stock = quote['stock']
+ 	bid_price = float(quote['top_bid']['price'])
+ 	ask_price = float(quote['top_ask']['price'])
+-	price = bid_price
++	price = round((bid_price+ask_price)/2,2)
+ 	return stock, bid_price, ask_price, price
+
++
+ def getRatio(price_a, price_b):
+-	""" Get ratio of price_a and price_b """
+-	""" ------------- Update this function ------------- """
+-	""" Also create some unit tests for this function in client_test.py """
+-	return 1
++  if (price_b ==0):
++    return
++  return float(price_a)/float(price_b)
+
+ # Main
+ if __name__ == "__main__":
+
+ 	# Query the price once every N seconds.
+-	for _ in iter(range(N)):
++	for _ in range(N):
+ 		quotes = json.loads(urllib.request.urlopen(QUERY.format(random.random())).read())
+
+ 		""" ----------- Update to get the ratio --------------- """
+diff --git a/1/jpm_module_1/client_test.py b/1/jpm_module_1/client_test.py
+index af2bf26..8693550 100644
+--- a/1/jpm_module_1/client_test.py
++++ b/1/jpm_module_1/client_test.py
+@@ -1,5 +1,5 @@
+ import unittest
+-from client3 import getDataPoint
++from client3 import getDataPoint, getRatio
+
+ class ClientTest(unittest.TestCase):
+   def test_getDataPoint_calculatePrice(self):
+@@ -15,6 +15,9 @@ class ClientTest(unittest.TestCase):
+       {'top_ask': {'price': 121.68, 'size': 4}, 'timestamp': '2019-02-11 22:06:30.572453', 'top_bid': {'price': 117.87, 'size': 81}, 'id': '0.109974697771', 'stock': 'DEF'}
+     ]
+     """ ------------ Add the assertion below ------------ """
++    for quote in quotes:
++           self.assertEqual(getDataPoint(quote), (quote['stock'], quote['top_bid']['price'], quote['top_ask']['price'], (quote['top_bid']['price'] + quote['top_ask']['price'])/2))
++
+
+
+   """ ------------ Add more unit tests ------------ """
+diff --git a/1/poetry.lock b/1/poetry.lock
+index 31bddce..a62f38b 100644
+--- a/1/poetry.lock
++++ b/1/poetry.lock
+@@ -1,14 +1,7 @@
+-[[package]]
+-category = "main"
+-description = "A Python package - client"
+-name = "client"
+-optional = false
+-python-versions = "*"
+-version = "0.0.1"
++package = []
+
+ [metadata]
+-content-hash = "116cd3f2baeebcd0e101593e82b4577aabc6295984167c67f5b03147526e8523"
+-python-versions = "^3.7"
++content-hash = "fafb334cb038533f851c23d0b63254223abf72ce4f02987e7064b0c95566699a"
++python-versions = "^3.8"
+
+-[metadata.hashes]
+-client = ["38dbc62a18e58e97176dbb999d3be7dafb5ee4fa8fd02fc674ed7330c76aec2e"]
++[metadata.files]
+diff --git a/1/pyproject.toml b/1/pyproject.toml
+index 87222c8..de8c6ad 100644
+--- a/1/pyproject.toml
++++ b/1/pyproject.toml
+@@ -1,14 +1,13 @@
++[build-system]
++build-backend = "poetry.masonry.api"
++requires = ["poetry>=0.12"]
++
++[tool]
+ [tool.poetry]
++authors = ["Your Name <you@example.com>"]
++description = ""
+ name = "runner"
+ version = "0.1.0"
+-description = ""
+-authors = ["Your Name <you@example.com>"]
+-
+ [tool.poetry.dependencies]
+-python = "^3.7"
+-
++python = "^3.8"
+ [tool.poetry.dev-dependencies]
+-
+-[build-system]
+-requires = ["poetry>=0.12"]
+-build-backend = "poetry.masonry.api"
+--
+2.24.1

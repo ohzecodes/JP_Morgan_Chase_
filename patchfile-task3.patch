@@ -1,0 +1,329 @@
+From c92408f28b0e6fbadbe65818809e27670f7c8b2a Mon Sep 17 00:00:00 2001
+From: M <mzafar02@mylangara.ca>
+Date: Sat, 8 Aug 2020 20:49:57 -0700
+Subject: [PATCH] 1
+
+---
+ src/App.tsx            | 77 ++++++++++++++++--------------------------
+ src/DataManipulator.ts | 36 ++++++++++++++++++++
+ src/DataStreamer.ts    | 13 ++-----
+ src/Graph.tsx          | 65 +++++++++++++----------------------
+ src/index.tsx          |  3 --
+ 5 files changed, 90 insertions(+), 104 deletions(-)
+ create mode 100644 src/DataManipulator.ts
+
+diff --git a/src/App.tsx b/src/App.tsx
+index c35d23f..274d20b 100755
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,77 +1,58 @@
+-import React, { Component } from "react";
+-import DataStreamer, { ServerRespond } from "./DataStreamer";
+-import Graph from "./Graph";
+-import "./App.css";
++import React, { Component } from 'react';
++import DataStreamer, { ServerRespond } from './DataStreamer';
++import Graph from './Graph';
++import './App.css';
+
+-/**
+- * State declaration for <App />
+- */
+ interface IState {
+-  data: ServerRespond[];
+-  showGraph: Boolean;
++  data: ServerRespond[],
++  showGraph: boolean,
+ }
+
+-/**
+- * The parent element of the react app.
+- * It renders title, button and Graph react element.
+- */
+ class App extends Component<{}, IState> {
+   constructor(props: {}) {
+     super(props);
+-
+     this.state = {
+-      // data saves the server responds.
+-      // We use this state to parse data down to the child element (Graph) as element property
+       data: [],
+-      showGraph: true,
++      showGraph: false,
+     };
+   }
+
+-  /**
+-   * Render Graph react component with state.data parse as property data
+-   */
+   renderGraph() {
+-    if (this.state.showGraph) return <Graph data={this.state.data} />;
++    if (this.state.showGraph) {
++      return (<Graph data={this.state.data}/>)
++    }
+   }
+
+-  /**
+-   * Get new data from server and update the state with the new data
+-   */
+   getDataFromServer() {
+-    setInterval(() => {
++    let x = 0;
++    const interval = setInterval(() => {
+       DataStreamer.getData((serverResponds: ServerRespond[]) => {
+-        // Update the state by creating a new array of data that consists of
+-        // Previous data in the state and the new data from server
+-        this.setState({ data: [...this.state.data, ...serverResponds] });
++        this.setState({
++          data: serverResponds,
++          showGraph: true,
++        });
+       });
+-    }, 1050);
++      x++;
++      if (x > 1000) {
++        clearInterval(interval);
++      }
++    }, 100);
+   }
+
+-  /**
+-   * Render the App react component
+-   */
+   render() {
+     return (
+       <div className="App">
+-        <header className="App-header">Bank & Merge Co Task 2</header>
++        <header className="App-header">
++          Bank Merge & Co Task 3
++        </header>
+         <div className="App-content">
+-          <button
+-            className="btn btn-primary Stream-button"
+-            // when button is click, our react app tries to request
+-            // new data from the server.
+-            // As part of your task, update the getDataFromServer() function
+-            // to keep requesting the data every 100ms until the app is closed
+-            // or the server does not return anymore data.
+-            onClick={() => {
+-              this.getDataFromServer();
+-            }}
+-          >
+-            Start Streaming Data
+-          </button>
+-          <div className="Graph">{this.renderGraph()}</div>
++          <button className="btn btn-primary Stream-button" onClick={() => {this.getDataFromServer()}}>Start Streaming Data</button>
++          <div className="Graph">
++            {this.renderGraph()}
++          </div>
+         </div>
+       </div>
+-    );
++    )
+   }
+ }
+
+diff --git a/src/DataManipulator.ts b/src/DataManipulator.ts
+new file mode 100644
+index 0000000..b05301b
+--- /dev/null
++++ b/src/DataManipulator.ts
+@@ -0,0 +1,36 @@
++import { ServerRespond } from "./DataStreamer";
++
++export interface Row {
++  price_abc: number;
++  price_def: number;
++  ratio: number;
++  timestamp: Date;
++  upper_bound: number;
++  lower_bound: number;
++  trigger_alert: number | undefined;
++}
++
++export class DataManipulator {
++  static generateRow(serverResponds: ServerRespond[]): Row {
++    const priceABC =
++      (serverResponds[0].top_ask.price + serverResponds[0].top_bid.price) / 2;
++    const priceDEF =
++      (serverResponds[1].top_ask.price + serverResponds[1].top_bid.price) / 2;
++    const ratio = priceABC / priceDEF;
++    const upper_bound = 1 + 0.07;
++    const lower_bound = 1 - 0.07;
++    return {
++      price_abc: priceABC,
++      price_def: priceDEF,
++      ratio,
++      timestamp:
++        serverResponds[0].timestamp > serverResponds[1].timestamp
++          ? serverResponds[0].timestamp
++          : serverResponds[1].timestamp,
++      upper_bound: upper_bound,
++      lower_bound: lower_bound,
++      trigger_alert:
++        ratio > upper_bound || ratio < lower_bound ? ratio : undefined,
++    };
++  }
++}
+diff --git a/src/DataStreamer.ts b/src/DataStreamer.ts
+index 78583cb..9d9eca7 100644
+--- a/src/DataStreamer.ts
++++ b/src/DataStreamer.ts
+@@ -1,11 +1,7 @@
+ export interface Order {
+-  price: Number,
+-  size: Number,
++  price: number,
++  size: number,
+ }
+-/**
+- * The datafeed server returns an array of ServerRespond with 2 stocks.
+- * We do not have to manipulate the ServerRespond for the purpose of this task.
+- */
+ export interface ServerRespond {
+   stock: string,
+   top_bid: Order,
+@@ -14,13 +10,8 @@ export interface ServerRespond {
+ }
+
+ class DataStreamer {
+-  // The url where datafeed server is listening
+   static API_URL: string = 'http://localhost:8080/query?id=1';
+
+-  /**
+-   * Send request to the datafeed server and executes callback function on success
+-   * @param callback callback function that takes JSON object as its argument
+-   */
+   static getData(callback: (data: ServerRespond[]) => void): void {
+     const request = new XMLHttpRequest();
+     request.open('GET', DataStreamer.API_URL, false);
+diff --git a/src/Graph.tsx b/src/Graph.tsx
+index a721549..dc9f408 100644
+--- a/src/Graph.tsx
++++ b/src/Graph.tsx
+@@ -1,30 +1,17 @@
+ import React, { Component } from "react";
+ import { Table } from "@jpmorganchase/perspective";
+ import { ServerRespond } from "./DataStreamer";
++import { DataManipulator } from "./DataManipulator";
+ import "./Graph.css";
+
+-/**
+- * Props declaration for <Graph />
+- */
+ interface IProps {
+   data: ServerRespond[];
+ }
+
+-/**
+- * Perspective library adds load to HTMLElement prototype.
+- * This interface acts as a wrapper for Typescript compiler.
+- */
+-interface PerspectiveViewerElement {
+-  [x: string]: any;
++interface PerspectiveViewerElement extends HTMLElement {
+   load: (table: Table) => void;
+ }
+-
+-/**
+- * React component that renders Perspective based on data
+- * parsed from its parent through data property.
+- */
+ class Graph extends Component<IProps, {}> {
+-  // Perspective table
+   table: Table | undefined;
+
+   render() {
+@@ -32,16 +19,19 @@ class Graph extends Component<IProps, {}> {
+   }
+
+   componentDidMount() {
+-    // Get element to attach the table from the DOM.
++    // Get element from the DOM.
+     const elem = (document.getElementsByTagName(
+       "perspective-viewer"
+     )[0] as unknown) as PerspectiveViewerElement;
+
+     const schema = {
+-      stock: "string",
+-      top_ask_price: "float",
+-      top_bid_price: "float",
++      price_abc: "float",
++      price_def: "float",
++      ratio: "float",
+       timestamp: "date",
++      upper_bound: "float",
++      lower_bound: "float",
++      trigger_alert: "float",
+     };
+
+     if (window.perspective && window.perspective.worker()) {
+@@ -49,40 +39,31 @@ class Graph extends Component<IProps, {}> {
+     }
+     if (this.table) {
+       // Load the `table` in the `<perspective-viewer>` DOM reference.
+-
+-      // Add more Perspective configurations here.
+       elem.load(this.table);
+       elem.setAttribute("view", "y_line");
+-      elem.setAttribute("column-pivots", '["stock"]');
+       elem.setAttribute("row-pivots", '["timestamp"]');
+-      elem.setAttribute("columns", '["top_ask_price"]');
++      elem.setAttribute(
++        "columns",
++        '["ratio", "lower_bound", "upper_bound", "trigger_alert"]'
++      );
+       elem.setAttribute(
+         "aggregates",
+-        `
+-      {"stock": "distinct count",
+-      "top_ask_price":"avg",
+-      "top_bid_price": "avg",
+-      "timestamp":"distinct count"}`
++        JSON.stringify({
++          price_abc: "avg",
++          price_def: "avg",
++          ratio: "avg",
++          timestamp: "distinct count",
++          upper_bound: "avg",
++          lower_bound: "avg",
++          trigger_alert: "avg",
++        })
+       );
+     }
+   }
+
+   componentDidUpdate() {
+-    // Everytime the data props is updated, insert the data into Perspective table
+     if (this.table) {
+-      // As part of the task, you need to fix the way we update the data props to
+-      // avoid inserting duplicated entries into Perspective table again.
+-      this.table.update(
+-        this.props.data.map((el: any) => {
+-          // Format the data from ServerRespond to the schema
+-          return {
+-            stock: el.stock,
+-            top_ask_price: (el.top_ask && el.top_ask.price) || 0,
+-            top_bid_price: (el.top_bid && el.top_bid.price) || 0,
+-            timestamp: el.timestamp,
+-          };
+-        })
+-      );
++      this.table.update([DataManipulator.generateRow(this.props.data)]);
+     }
+   }
+ }
+diff --git a/src/index.tsx b/src/index.tsx
+index 6e7a3f1..f742118 100755
+--- a/src/index.tsx
++++ b/src/index.tsx
+@@ -8,7 +8,4 @@ declare global {
+   interface Window { perspective: any; }
+ }
+
+-/**
+- * React App attaches the DOM to the DOM element #root in public/index.html
+- */
+ ReactDOM.render(<App />, document.getElementById('root'));
+--
+2.24.1
